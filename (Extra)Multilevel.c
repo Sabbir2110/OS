@@ -53,4 +53,63 @@ int main() {
 
     return 0;
 }
+CPP Code
 
+#include <iostream>
+#include <vector>
+
+struct Process {
+    int pid;
+    int burst_time;
+};
+
+int main() {
+    std::vector<Process> q0, q1, q2;
+    int n0, n1, n2;
+
+    std::cout << "Enter number of processes in Queue 0 (Highest Priority): ";
+    if (!(std::cin >> n0) || n0 < 0) return 1;
+    for (int i = 0; i < n0; ++i) {
+        Process p{ i + 1, 0 };
+        std::cout << "Burst time for P" << p.pid << ": ";
+        std::cin >> p.burst_time;
+        q0.push_back(p);
+    }
+
+    std::cout << "\nEnter number of processes in Queue 1: ";
+    if (!(std::cin >> n1) || n1 < 0) return 1;
+    for (int i = 0; i < n1; ++i) {
+        Process p{ i + 1, 0 };
+        std::cout << "Burst time for P" << p.pid << ": ";
+        std::cin >> p.burst_time;
+        q1.push_back(p);
+    }
+
+    std::cout << "\nEnter number of processes in Queue 2 (Lowest Priority): ";
+    if (!(std::cin >> n2) || n2 < 0) return 1;
+    for (int i = 0; i < n2; ++i) {
+        Process p{ i + 1, 0 };
+        std::cout << "Burst time for P" << p.pid << ": ";
+        std::cin >> p.burst_time;
+        q2.push_back(p);
+    }
+
+    std::cout << "\nExecution Order:\n";
+
+    std::cout << "\nQueue 0:\n";
+    for (const auto &p : q0) {
+        std::cout << "P" << p.pid << " executed for " << p.burst_time << " units\n";
+    }
+
+    std::cout << "\nQueue 1:\n";
+    for (const auto &p : q1) {
+        std::cout << "P" << p.pid << " executed for " << p.burst_time << " units\n";
+    }
+
+    std::cout << "\nQueue 2:\n";
+    for (const auto &p : q2) {
+        std::cout << "P" << p.pid << " executed for " << p.burst_time << " units\n";
+    }
+
+    return 0;
+}
