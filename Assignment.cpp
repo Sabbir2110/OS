@@ -1,332 +1,111 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-struct Process {
-    int pid, at, bt, ct, wt, tat, rt, priority, queue, rem;
-};
+struct P{int id,at,bt,ct,wt,tat,rt,pr,q,rem;};
 
-// Calculate metrics
-void calcMetrics(vector<Process>& p) {
-    for(auto &proc : p) {
-        proc.tat = proc.ct - proc.at;
-        proc.wt = proc.tat - proc.bt;
+void calc(vector<P>&p){for(auto&x:p){x.tat=x.ct-x.at;x.wt=x.tat-x.bt;}}
+
+void show(vector<P>&p,string a){
+    double aw=0,at=0,ar=0;
+    cout<<"\n--- "<<a<<" ---\nPID AT BT CT TAT WT RT";
+    if(a.find("PR")!=string::npos)cout<<" PR";
+    if(a.find("MLQ")!=string::npos)cout<<" Q";
+    for(auto&x:p){
+        cout<<"\nP"<<x.id<<" "<<x.at<<" "<<x.bt<<" "<<x.ct<<" "<<x.tat<<" "<<x.wt<<" "<<x.rt;
+        if(a.find("PR")!=string::npos)cout<<" "<<x.pr;
+        if(a.find("MLQ")!=string::npos)cout<<" "<<x.q;
+        aw+=x.wt;at+=x.tat;ar+=x.rt;
     }
+    int n=p.size();
+    cout<<"\n\nAvg WT:"<<aw/n<<"\nAvg TAT:"<<at/n<<"\nAvg RT:"<<ar/n<<"\n";
 }
 
-// Display results
-void display(vector<Process>& p, string algo) {
-    double avgWT = 0, avgTAT = 0, avgRT = 0;
-    
-    cout << "\n" << string(50, '=');
-    cout << "\n" << algo;
-    cout << "\n" << string(50, '=');
-    
-    cout << "\nPID\tAT\tBT\tCT\tTAT\tWT\tRT";
-    if(algo.find("PRIORITY") != string::npos) cout << "\tPRI";
-    if(algo.find("MLQ") != string::npos) cout << "\tQUEUE";
-    
-    for(auto &proc : p) {
-        cout << "\nP" << proc.pid << "\t" << proc.at << "\t" << proc.bt 
-             << "\t" << proc.ct << "\t" << proc.tat << "\t" << proc.wt << "\t" << proc.rt;
-        if(algo.find("PRIORITY") != string::npos) cout << "\t" << proc.priority;
-        if(algo.find("MLQ") != string::npos) cout << "\t" << proc.queue;
-        
-        avgWT += proc.wt;
-        avgTAT += proc.tat;
-        avgRT += proc.rt;
+void RR(vector<P>p){
+    int tq;cout<<"\nTime Quantum: ";cin>>tq;
+    int n=p.size(),t=0,c=0,next=0;
+    queue<int>q;vector<bool>inq(n,0),s(n,0);
+    for(int i=0;i<n;i++)p[i].rem=p[i].bt;
+    sort(p.begin(),p.end(),[](P a,P b){return a.at<b.at;});
+    while(next<n&&p[next].at==0){q.push(next);inq[next]=1;next++;}
+    while(c<n){
+        if(q.empty()){t++;
+            while(next<n&&p[next].at<=t&&p[next].rem>0){
+                if(!inq[next]){q.push(next);inq[next]=1;}next++;}
+            continue;}
+        int i=q.front();q.pop();inq[i]=0;
+        if(!s[i]){p[i].rt=t-p[i].at;s[i]=1;}
+        int ex=min(tq,p[i].rem);p[i].rem-=ex;t+=ex;
+        while(next<n&&p[next].at<=t&&p[next].rem>0){
+            if(!inq[next]){q.push(next);inq[next]=1;}next++;}
+        if(p[i].rem>0){q.push(i);inq[i]=1;}
+        else{p[i].ct=t;c++;}
     }
-    
-    int n = p.size();
-    cout << "\n\nAverage Waiting Time: " << avgWT/n;
-    cout << "\nAverage Turnaround Time: " << avgTAT/n;
-    cout << "\nAverage Response Time: " << avgRT/n;
-    cout << "\n" << string(50, '-') << "\n";
+    calc(p);show(p,"RR(TQ="+to_string(tq)+")");
 }
 
-// ========== ROUND ROBIN ==========
-void RoundRobin(vector<Process> p) {
-    int tq;
-    cout << "\nEnter Time Quantum for Round Robin: ";
-    cin >> tq;
-    
-    int n = p.size(), time = 0, completed = 0;
-    queue<int> readyQueue;
-    vector<bool> inQueue(n, false), started(n, false);
-    
-    for(int i = 0; i < n; i++) p[i].rem = p[i].bt;
-    
-    // Sort by arrival time
-    sort(p.begin(), p.end(), [](Process a, Process b) {
-        return a.at < b.at;
-    });
-    
-    // Initial processes arriving at time 0
-    int nextProc = 0;
-    while(nextProc < n && p[nextProc].at == 0) {
-        readyQueue.push(nextProc);
-        inQueue[nextProc] = true;
-        nextProc++;
+void Prio(vector<P>p){
+    int n=p.size(),t=0,c=0;vector<bool>d(n,0);
+    sort(p.begin(),p.end(),[](P a,P b){return a.at<b.at;});
+    while(c<n){
+        int idx=-1,mx=-1;
+        for(int i=0;i<n;i++)
+            if(!d[i]&&p[i].at<=t&&p[i].pr>mx){mx=p[i].pr;idx=i;}
+        if(idx==-1){t++;continue;}
+        p[idx].rt=t-p[idx].at;t+=p[idx].bt;
+        p[idx].ct=t;d[idx]=1;c++;
     }
-    
-    while(completed < n) {
-        if(readyQueue.empty()) {
-            time++;
-            
-            // Check for new arrivals
-            while(nextProc < n && p[nextProc].at <= time && p[nextProc].rem > 0) {
-                if(!inQueue[nextProc]) {
-                    readyQueue.push(nextProc);
-                    inQueue[nextProc] = true;
-                }
-                nextProc++;
-            }
-            continue;
-        }
-        
-        int idx = readyQueue.front();
-        readyQueue.pop();
-        inQueue[idx] = false;
-        
-        if(!started[idx]) {
-            p[idx].rt = time - p[idx].at;
-            started[idx] = true;
-        }
-        
-        int execTime = min(tq, p[idx].rem);
-        p[idx].rem -= execTime;
-        time += execTime;
-        
-        // Check for new arrivals during execution
-        while(nextProc < n && p[nextProc].at <= time && p[nextProc].rem > 0) {
-            if(!inQueue[nextProc]) {
-                readyQueue.push(nextProc);
-                inQueue[nextProc] = true;
-            }
-            nextProc++;
-        }
-        
-        if(p[idx].rem > 0) {
-            readyQueue.push(idx);
-            inQueue[idx] = true;
-        } else {
-            p[idx].ct = time;
-            completed++;
-        }
-    }
-    
-    calcMetrics(p);
-    display(p, "ROUND ROBIN (TQ=" + to_string(tq) + ")");
+    calc(p);show(p,"PRIORITY");
 }
 
-// ========== PRIORITY ==========
-void PriorityScheduling(vector<Process> p) {
-    int n = p.size(), time = 0, completed = 0;
-    vector<bool> done(n, false);
-    
-    // Sort by arrival time first
-    sort(p.begin(), p.end(), [](Process a, Process b) {
-        return a.at < b.at;
-    });
-    
-    while(completed < n) {
-        int idx = -1, maxPriority = -1;
-        
-        // Find highest priority process that has arrived
-        for(int i = 0; i < n; i++) {
-            if(!done[i] && p[i].at <= time && p[i].priority > maxPriority) {
-                maxPriority = p[i].priority;
-                idx = i;
-            }
+void MLQ(vector<P>p){
+    int tq;cout<<"\nRR Queue Time Quantum: ";cin>>tq;
+    int n=p.size(),t=0,c=0,next=0;
+    queue<int>q0,q1;
+    vector<bool>inq0(n,0),inq1(n,0),s(n,0),d(n,0);
+    for(int i=0;i<n;i++)p[i].rem=p[i].bt;
+    sort(p.begin(),p.end(),[](P a,P b){return a.at<b.at;});
+    while(next<n&&p[next].at==0){
+        if(p[next].q==0){q0.push(next);inq0[next]=1;}
+        else{q1.push(next);inq1[next]=1;}next++;}
+    while(c<n){
+        if(!q0.empty()){
+            int i=q0.front();q0.pop();inq0[i]=0;
+            if(!s[i]){p[i].rt=t-p[i].at;s[i]=1;}
+            int ex=min(tq,p[i].rem);p[i].rem-=ex;t+=ex;
+            while(next<n&&p[next].at<=t){
+                if(p[next].q==0&&!inq0[next]&&p[next].rem>0){q0.push(next);inq0[next]=1;}
+                else if(p[next].q==1&&!inq1[next]&&p[next].rem>0){q1.push(next);inq1[next]=1;}
+                next++;}
+            if(p[i].rem>0){q0.push(i);inq0[i]=1;}
+            else{p[i].ct=t;d[i]=1;c++;}
         }
-        
-        if(idx == -1) {
-            time++;
-            continue;
+        else if(!q1.empty()){
+            int i=q1.front();q1.pop();inq1[i]=0;
+            if(!s[i]){p[i].rt=t-p[i].at;s[i]=1;}
+            t+=p[i].rem;p[i].rem=0;
+            p[i].ct=t;d[i]=1;c++;
+            while(next<n&&p[next].at<=t){
+                if(p[next].q==0&&!inq0[next]&&p[next].rem>0){q0.push(next);inq0[next]=1;}
+                else if(p[next].q==1&&!inq1[next]&&p[next].rem>0){q1.push(next);inq1[next]=1;}
+                next++;}
         }
-        
-        p[idx].rt = time - p[idx].at;
-        time += p[idx].bt;
-        p[idx].ct = time;
-        done[idx] = true;
-        completed++;
+        else{t++;
+            while(next<n&&p[next].at<=t){
+                if(p[next].q==0&&!inq0[next]&&p[next].rem>0){q0.push(next);inq0[next]=1;}
+                else if(p[next].q==1&&!inq1[next]&&p[next].rem>0){q1.push(next);inq1[next]=1;}
+                next++;}
+        }
     }
-    
-    calcMetrics(p);
-    display(p, "PRIORITY SCHEDULING");
+    calc(p);show(p,"MLQ");
 }
 
-// ========== MULTILEVEL QUEUE ==========
-void MultilevelQueue(vector<Process> p) {
-    int tq;
-    cout << "\nEnter Time Quantum for Round Robin queue: ";
-    cin >> tq;
-    
-    int n = p.size(), time = 0, completed = 0;
-    queue<int> queueRR, queueFCFS;
-    vector<bool> inRR(n, false), inFCFS(n, false), started(n, false), done(n, false);
-    
-    for(int i = 0; i < n; i++) p[i].rem = p[i].bt;
-    
-    // Sort by arrival time
-    sort(p.begin(), p.end(), [](Process a, Process b) {
-        return a.at < b.at;
-    });
-    
-    // Initial assignment to queues
-    int nextProc = 0;
-    while(nextProc < n && p[nextProc].at == 0) {
-        if(p[nextProc].queue == 0) {
-            queueRR.push(nextProc);
-            inRR[nextProc] = true;
-        } else {
-            queueFCFS.push(nextProc);
-            inFCFS[nextProc] = true;
-        }
-        nextProc++;
+int main(){
+    int n;cout<<"Processes: ";cin>>n;
+    vector<P>p(n);
+    for(int i=0;i<n;i++){
+        p[i].id=i+1;cout<<"P"<<i+1<<" AT BT PR Q: ";
+        cin>>p[i].at>>p[i].bt>>p[i].pr>>p[i].q;
     }
-    
-    while(completed < n) {
-        // Priority to RR queue
-        if(!queueRR.empty()) {
-            int idx = queueRR.front();
-            queueRR.pop();
-            inRR[idx] = false;
-            
-            if(!started[idx]) {
-                p[idx].rt = time - p[idx].at;
-                started[idx] = true;
-            }
-            
-            int execTime = min(tq, p[idx].rem);
-            p[idx].rem -= execTime;
-            time += execTime;
-            
-            // Check for new arrivals
-            while(nextProc < n && p[nextProc].at <= time) {
-                if(p[nextProc].queue == 0 && !inRR[nextProc] && p[nextProc].rem > 0) {
-                    queueRR.push(nextProc);
-                    inRR[nextProc] = true;
-                } else if(p[nextProc].queue == 1 && !inFCFS[nextProc] && p[nextProc].rem > 0) {
-                    queueFCFS.push(nextProc);
-                    inFCFS[nextProc] = true;
-                }
-                nextProc++;
-            }
-            
-            // Re-add to RR queue if not finished
-            if(p[idx].rem > 0) {
-                queueRR.push(idx);
-                inRR[idx] = true;
-            } else {
-                p[idx].ct = time;
-                done[idx] = true;
-                completed++;
-            }
-        }
-        // Execute from FCFS queue
-        else if(!queueFCFS.empty()) {
-            int idx = queueFCFS.front();
-            queueFCFS.pop();
-            inFCFS[idx] = false;
-            
-            if(!started[idx]) {
-                p[idx].rt = time - p[idx].at;
-                started[idx] = true;
-            }
-            
-            time += p[idx].rem;
-            p[idx].rem = 0;
-            p[idx].ct = time;
-            done[idx] = true;
-            completed++;
-            
-            // Check for new arrivals
-            while(nextProc < n && p[nextProc].at <= time) {
-                if(p[nextProc].queue == 0 && !inRR[nextProc] && p[nextProc].rem > 0) {
-                    queueRR.push(nextProc);
-                    inRR[nextProc] = true;
-                } else if(p[nextProc].queue == 1 && !inFCFS[nextProc] && p[nextProc].rem > 0) {
-                    queueFCFS.push(nextProc);
-                    inFCFS[nextProc] = true;
-                }
-                nextProc++;
-            }
-        } else {
-            time++;
-            // Check for new arrivals when both queues are empty
-            while(nextProc < n && p[nextProc].at <= time) {
-                if(p[nextProc].queue == 0 && !inRR[nextProc] && p[nextProc].rem > 0) {
-                    queueRR.push(nextProc);
-                    inRR[nextProc] = true;
-                } else if(p[nextProc].queue == 1 && !inFCFS[nextProc] && p[nextProc].rem > 0) {
-                    queueFCFS.push(nextProc);
-                    inFCFS[nextProc] = true;
-                }
-                nextProc++;
-            }
-        }
-    }
-    
-    calcMetrics(p);
-    display(p, "MULTILEVEL QUEUE (Q0=RR, Q1=FCFS)");
-}
-
-// ========== COMPARE ALL ALGORITHMS ==========
-void compareAlgorithms(vector<Process> processes) {
-    cout << "\n" << string(60, '=');
-    cout << "\n\tPERFORMANCE COMPARISON";
-    cout << "\n" << string(60, '=');
-    
-    vector<pair<string, vector<double>>> comparisons;
-    
-    // Run Round Robin
-    auto rr = processes;
-    RoundRobin(rr);
-    
-    // Run Priority
-    auto prio = processes;
-    PriorityScheduling(prio);
-    
-    // Run MLQ
-    auto mlq = processes;
-    MultilevelQueue(mlq);
-    
-    cout << "\n\nSUMMARY:";
-    cout << "\n- Round Robin: Good for time-sharing, fair to all processes";
-    cout << "\n- Priority: Suitable for real-time systems, critical tasks get priority";
-    cout << "\n- Multilevel Queue: Combines benefits of multiple algorithms";
-    cout << "\n" << string(60, '=') << "\n";
-}
-
-// ========== MAIN FUNCTION ==========
-int main() {
-    cout << "\n" << string(60, '=');
-    cout << "\n\tCPU SCHEDULING ALGORITHMS";
-    cout << "\n\t(Round Robin, Priority, Multilevel Queue)";
-    cout << "\n" << string(60, '=');
-    
-    int n;
-    cout << "\n\nEnter number of processes: ";
-    cin >> n;
-    
-    vector<Process> processes(n);
-    
-    cout << "\nEnter process details:\n";
-    for(int i = 0; i < n; i++) {
-        processes[i].pid = i + 1;
-        cout << "\nProcess P" << (i + 1) << ":\n";
-        cout << "  Arrival Time: ";
-        cin >> processes[i].at;
-        cout << "  Burst Time: ";
-        cin >> processes[i].bt;
-        cout << "  Priority (1-10, higher=higher priority): ";
-        cin >> processes[i].priority;
-        cout << "  Queue (0 for RR, 1 for FCFS in MLQ): ";
-        cin >> processes[i].queue;
-    }
-    
-    // Compare all algorithms
-    compareAlgorithms(processes);
-    
+    RR(p);Prio(p);MLQ(p);
     return 0;
 }
